@@ -97,16 +97,26 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <QtRcc Include="ClientMain.qrc" />
+    <ClCompile Include="MsgMain.cpp" />
     <QtUic Include="ClientMain.ui" />
     <QtMoc Include="ClientMain.h" />
     <ClCompile Include="ClientMain.cpp" />
     <ClCompile Include="login.cpp" />
     <ClCompile Include="main.cpp" />
     <QtUic Include="login.ui" />
+    <QtUic Include="MsgMain.ui" />
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="login.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="MsgMain.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtRcc Include="..\..\..\QtComm\QtComm.qrc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

@@ -5,7 +5,7 @@
 #include "ui_ClientMain.h"
 #include <qtcpsocket.h>
 #include "login.h"
-
+#include "MsgMain.h"
 QT_BEGIN_NAMESPACE
 namespace Ui { class ClientMainClass; };
 QT_END_NAMESPACE
@@ -25,7 +25,7 @@ signals:
 private:
     Ui::ClientMainClass *ui;
     QTcpSocket* m_socket;
-
+    MsgMain* m_msgWidget;
 public slots:
     void onClickedLogon();
     void onClickedLogin();

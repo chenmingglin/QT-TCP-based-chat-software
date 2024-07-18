@@ -7,13 +7,14 @@
 #include <qmessagebox.h>
 #include <qvariantmap.h>
 
+
 ClientMain::ClientMain(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::ClientMainClass())
 {
     ui->setupUi(this);
     m_socket = new QTcpSocket(this);
-
+    m_msgWidget = new MsgMain(this);
     setWindowTitle("客户端");
     m_socket->connectToHost(QHostAddress(getIp()), 8989);
     connect(ui->logon, &QPushButton::clicked, this, &ClientMain::onClickedLogon);
@@ -87,6 +88,7 @@ void ClientMain::onClickedLogin()
     });
 }
 
+//接受服务器数据
 void ClientMain::recvSocketData()
 {
     QByteArray data = m_socket->readAll();
@@ -110,6 +112,7 @@ void ClientMain::recvData(int operation,QVariantMap params)
         {
             qDebug() << "logon ok:" << params.value("msg").toString();
             this->close();
+            m_msgWidget->show();
         }
         else
         {
