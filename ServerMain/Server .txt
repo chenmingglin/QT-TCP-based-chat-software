@@ -1,0 +1,141 @@
+#include "Server.h"
+#include <qthread.h>
+#include <qdebug.h>
+#include <qjsondocument.h>
+#include <qjsonobject.h>
+#include "Sql.h"
+Server::Server(QObject* parent)
+	: QTcpServer(parent)
+{
+	
+	if (this->listen(QHostAddress::Any, 8989))
+	{
+		QString msg = "ok!";
+		qDebug() << msg;
+	}
+
+}
+
+Server::~Server()
+{
+	
+}
+
+void Server::disconnected()
+{
+	QTcpSocket* sock = qobject_cast<QTcpSocket*>(sender());
+	if (!sock)
+	{
+		return;
+	}
+	//m_clientsockets.removeOne(sock);
+	m_clientsockets.insert(m_clientsockets.key(sock), nullptr);
+	sock->deleteLater();
+}
+
+void Server::readReady()
+{
+	QTcpSocket* sock = qobject_cast<QTcpSocket*>(sender());
+	QString data;
+	if (sock && sock->bytesAvailable() > 0) {
+		 data = sock->readAll();
+		qDebug() << "Received data:" << data;
+		//sock->write(data); // 回发数据
+		//sock->flush(); // 确保数据被发送
+	}
+	else
+	{
+		qDebug() << "read error";
+	}
+	QJsonDocument doc = doc.fromJson(data.toUtf8());
+	QJsonObject obj = doc.object();
+	int head = obj.value("head").toInt();
+	QString name = obj.value("name").toString();
+	QString msg = obj.value("msg").toString();
+	QString psd = obj.value("psd").toString();
+	int from_id = obj.value("from").toInt();
+	int to_id = obj.value("to").toInt();
+	QString ip = obj.value("ip").toString();
+	
+
+	qDebug() << "head : " << head;
+	switch (3)
+	{
+	case 0:
+		//登出
+		disconnected();
+		break;
+	case 1:
+		//登入
+	{
+		Sql* sql = new Sql(this);
+		if (sql->logon(from_id, psd))
+		{
+			m_clientsockets.insert(from_id, sock);
+			auto it = m_clientsockets.find(from_id);
+			if (it != m_clientsockets.end())
+			{
+				it.value()->write("1");
+			}
+		}
+		else
+		{
+			qDebug() << "logon error";
+			auto it = m_clientsockets.find(from_id);
+			if (it != m_clientsockets.end())
+			{
+				it.value()->write("0");
+			}
+		}
+		break;
+	}
+	case 2: 
+	{ //消息
+		  auto it = m_clientsockets.find(to_id);
+		  if (it != m_clientsockets.end())
+		  {
+			  it.value()->write(name.toUtf8() +"："+ msg.toUtf8());
+		  }
+		  
+		  break;
+	}
+	case 3:
+		//注册
+	{
+		Sql* sql = new Sql(this);
+		qDebug() << "name :" << name;
+		qDebug() << "psd :" << psd;
+		if (sql->login(&from_id, psd, name, ip))
+		{
+			sock->write(QString::number(from_id).toUtf8());
+			m_clientsockets.insert(from_id, sock);
+		}
+
+		else
+		{
+			qDebug() << "login error";
+		}
+		break;
+	}
+	default:
+		break;
+	}
+}
+
+void Server::incomingConnection(qintptr socketDescriptor)
+{
+	auto* clientSocket = new QTcpSocket(this);
+	clientSocket->setSocketDescriptor(socketDescriptor);
+
+	auto* thread = new QThread(this);
+	clientSocket->moveToThread(thread);
+
+	connect(clientSocket, &QTcpSocket::readyRead, this, &Server::readReady);
+	connect(clientSocket, &QTcpSocket::disconnected, this, &Server::disconnected);
+	connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+	connect(clientSocket, &QTcpSocket::disconnected, thread, &QThread::quit);
+	
+	thread->start();
+	qDebug() << thread->currentThreadId();
+}
+

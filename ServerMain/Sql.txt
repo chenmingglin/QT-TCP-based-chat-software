@@ -1,0 +1,84 @@
+#include "Sql.h"
+#include <qsqldatabase.h>
+#include <qdebug.h>
+#include <qsqlerror.h>
+#include <qsqlquery.h>
+
+Sql::Sql(QObject *parent)
+	: QObject(parent)
+{
+	db = QSqlDatabase::addDatabase("QMYSQL");
+	QStringList list = QSqlDatabase::drivers();
+    //连接数据库ip
+    db.setHostName("localhost");
+    //设置用户名mysql默认是root
+    db.setUserName("root");
+    //设置连接的数据库名
+    db.setDatabaseName("user");
+    //设置密码
+    db.setPassword("Chen021204.");
+    //设置端口mysql:3306
+    db.setPort(3306);
+    //连接服务器
+    if (!db.open())
+    {
+        qDebug() << "error: " << db.lastError().text();
+    }
+    else
+    {
+        qDebug() << "ok!";
+    }
+}
+
+Sql::~Sql()
+{
+    db.close();
+}
+
+bool Sql::logon(const int user_id, const QString& user_psd)
+{
+    QSqlQuery query;
+    QString sql = QString("select 'psd' from user.user where user_id = '%1'").arg(user_id);
+    if (query.exec(sql))    
+    {
+        while (query.next())
+        {
+            return user_psd == query.value("psd").toString();
+        }
+    }
+    else 
+    {
+        qDebug() << "Error executing query: " << query.lastError().text();
+        return false;
+    }
+    return false;
+}
+
+bool Sql::login(int* user_id, const QString& user_psd, const QString& user_name, const QString& user_ip)
+{
+    QSqlQuery query;
+    QString sql = QString("INSERT INTO user (name, user_psd, ip) VALUES ('%1', '%2', '%3')").arg(user_name).arg(user_psd).arg(user_ip);
+    //创建事务
+    qDebug() << user_name +":" + user_psd;
+    bool su = db.transaction();
+    if (su)
+    {
+        if (query.exec(sql))
+        {
+            *user_id = query.lastInsertId().toInt();
+            return true;
+        }
+        else
+        {
+            db.rollback();
+            qDebug() << query.lastError().text(); // 打印错误信息，帮助调试
+            return false;
+        }
+    }
+    else
+    {
+        qDebug() << "su :" << su;
+        return false;
+    }
+}
+
