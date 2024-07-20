@@ -3,10 +3,13 @@
 #include <QNetworkInterface>
 #include <qjsondocument.h>
 #include <qjsonobject.h>
+#include <qjsonarray.h>
+
 #include <qjsonvalue.h>
 #include <qmessagebox.h>
 #include <qvariantmap.h>
-
+#include <qlist.h>
+#include "user.h"
 
 ClientMain::ClientMain(QWidget *parent)
     : QMainWindow(parent)
@@ -20,6 +23,8 @@ ClientMain::ClientMain(QWidget *parent)
     connect(ui->logon, &QPushButton::clicked, this, &ClientMain::onClickedLogon);
     connect(ui->login, &QPushButton::clicked, this, &ClientMain::onClickedLogin);
     connect(m_socket, &QTcpSocket::readyRead, this, &ClientMain::recvSocketData);
+    connect(this, &ClientMain::sendFriendsList, m_msgWidget, &MsgMain::recvFriendsList);
+    connect(this, &ClientMain::sendLogonOk, this, &ClientMain::recvLogonOk);
 }
 
 ClientMain::~ClientMain()
@@ -47,7 +52,6 @@ QString ClientMain::getIp() const
     }
     return QString();
 }
-
 
 
 //×¢²á
@@ -110,9 +114,11 @@ void ClientMain::recvData(int operation,QVariantMap params)
         //µÇÈë
         if (params.value("flag").toBool())
         {
+            emit sendLogonOk();
             qDebug() << "logon ok:" << params.value("msg").toString();
             this->close();
             m_msgWidget->show();
+            
         }
         else
         {
@@ -142,11 +148,32 @@ void ClientMain::recvData(int operation,QVariantMap params)
         else
         {
             QMessageBox::critical(nullptr, "×¢²áÊ§°Ü", "×¢²áÊ§°Ü£¬Çë¼ì²éÄúµÄÊäÈë»òÉÔºóÔÙÊÔ¡£");
+            emit loginClose();
         }
         break;
+
+    case 4:
+    {
+        //ºÃÓÑÁÐ±í
+        QByteArray friendsData = params.value("msg").toByteArray();
+        emit sendFriendsList(friendsData);
+        break;
+    }
     default:
         break;
     }
+}
+
+void ClientMain::recvLogonOk()
+{
+    int id = ui->id->text().toInt();
+    QJsonObject obj;
+    obj.insert("head", 4);
+    obj.insert("from_id", id);
+
+    QJsonDocument doc(obj);
+    QByteArray jsonString = doc.toJson(QJsonDocument::Indented);
+    m_socket->write(jsonString);
 }
 
 

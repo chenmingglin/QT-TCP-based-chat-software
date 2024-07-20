@@ -3,7 +3,9 @@
 #include <qdebug.h>
 #include <qjsondocument.h>
 #include <qjsonobject.h>
+#include <qjsonarray.h>
 #include <Sql.h>
+#include "User.h"
 Server::Server(QObject* parent)
 	: QTcpServer(parent), m_sql(new Sql(this))
 {
@@ -13,6 +15,7 @@ Server::Server(QObject* parent)
 		qDebug() << msg;
 	}
 	connect(this, &Server::databaseOperationRequested, this, &Server::handleDatabaseOperation);
+	
 }
 
 Server::~Server()
@@ -29,6 +32,18 @@ void Server::disconnected()
 	
 	m_clientsockets.insert(m_clientsockets.key(sock), nullptr);
 	sock->deleteLater();
+}
+
+QJsonArray Server::userListToJsonArray(const QList<User>& users)
+{
+	QJsonArray jsonArray;
+	for (const auto& user : users) {
+		QJsonObject jsonObject;
+		jsonObject.insert("friendId", user.id());
+		jsonObject.insert("friendName", user.name());
+		jsonArray.append(jsonObject);
+	}
+	return jsonArray;
 }
 
 void Server::readReady()
@@ -69,6 +84,11 @@ void Server::readReady()
 		//注册
 		emit databaseOperationRequested(3, params,sock);
 		break;
+
+	case 4:
+		emit databaseOperationRequested(4, params, sock);
+		break;
+
 	default:
 		break;
 	}
@@ -119,11 +139,10 @@ void Server::handleDatabaseOperation(int operation, QVariantMap params, QTcpSock
 			obj.insert("from_id", from_id);
 			obj.insert("flag", true);
 			QJsonDocument doc(obj);
-			QString jsonString = QString::fromUtf8(doc.toJson(QJsonDocument::Indented));
 			m_clientsockets.insert(from_id, sock);
-			
 			// 发送登录成功信息
-			sock->write(jsonString.toUtf8());
+			QByteArray jsonString = doc.toJson(QJsonDocument::Indented);
+			sock->write(jsonString);
 			sock->flush();
 			break;
 		}
@@ -136,10 +155,10 @@ void Server::handleDatabaseOperation(int operation, QVariantMap params, QTcpSock
 			obj.insert("flag", false);
 
 			QJsonDocument doc(obj);
-			QString jsonString = QString::fromUtf8(doc.toJson(QJsonDocument::Indented));
+			QByteArray jsonString = doc.toJson(QJsonDocument::Indented);
 
 			// 发送登录失败信息
-			sock->write(jsonString.toUtf8());
+			sock->write(jsonString);
 			sock->flush();
 			break;
 		}
@@ -167,8 +186,8 @@ void Server::handleDatabaseOperation(int operation, QVariantMap params, QTcpSock
 			obj.insert("from_id", from_id);
 			obj.insert("flag", true);
 			QJsonDocument doc(obj);
-			QString jsonString = QString::fromUtf8(doc.toJson(QJsonDocument::Indented));
-			sock->write(jsonString.toUtf8());
+			QByteArray jsonString = doc.toJson(QJsonDocument::Indented);
+			sock->write(jsonString);
 			sock->flush();
 			break;
 		}
@@ -181,14 +200,31 @@ void Server::handleDatabaseOperation(int operation, QVariantMap params, QTcpSock
 			obj.insert("flag", false);
 			
 			QJsonDocument doc(obj);
-			QString jsonString = QString::fromUtf8(doc.toJson(QJsonDocument::Indented));
+			QByteArray jsonString = doc.toJson(QJsonDocument::Indented);
 
 			//发送注册失败信息
-			sock->write(jsonString.toUtf8());
+			sock->write(jsonString);
 			sock->flush();
 			break;
 		}
+
+	//好友列表
+	case 4:
+	{
+		QList<User> friendsList = m_sql->fetchFriendsList(params.value("from_id").toInt());
+		QJsonDocument doc(userListToJsonArray(friendsList));
+		QByteArray data = doc.toJson();
+		
+		QJsonObject obj;
+		obj.insert("head", 4);
+		obj.insert("msg", QString::fromUtf8(data));
+		QJsonDocument doc_hearder(obj);
+		QByteArray clientData = doc_hearder.toJson();
+		sock->write(clientData);
+
+		qDebug() << QString::fromUtf8(data);
 		break;
+	}
 	default:
 		break;
 	}

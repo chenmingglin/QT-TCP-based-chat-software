@@ -2,6 +2,7 @@
 #include <qdebug.h>
 #include <qsqlerror.h>
 #include <qsqlquery.h>
+#include <qlist.h>
 Sql::Sql(QObject *parent)
 	: QObject(parent)
 {
@@ -11,7 +12,7 @@ Sql::Sql(QObject *parent)
     m_db.setHostName("localhost");      // 数据库服务器的地址
     m_db.setDatabaseName("users"); // 数据库名称
     m_db.setUserName("root");           // 数据库用户名
-    m_db.setPassword("");       // 数据库密码
+    m_db.setPassword("Chen021204.");       // 数据库密码
     if (!m_db.open()) {
         qDebug() << "Cannot open database" << m_db.lastError().text();
         return;
@@ -86,3 +87,37 @@ bool Sql::login(int* user_id, const QString& user_name, const QString& user_psd,
     }
     
 }
+
+QList<User> Sql::fetchFriendsList(int user_id)
+{
+    QSqlQuery query;
+    
+    QList<User> friendsList;
+    QString sql = QString(
+        "SELECT "
+        "fu.user_id AS friend_id,"
+        "fu.user_name AS friend_username "
+        "FROM "
+        "USER u "
+        "JOIN "
+        "friends f ON u.user_id = f.user_id "
+        "JOIN "
+        "USER fu ON fu.user_id = f.friend_id "
+        "WHERE "
+        "u.user_id = '%1' AND f.status = 'accepted';"
+    ).arg(user_id);
+
+    if (!query.exec(sql)) {
+        qDebug() << "Error executing friend query:" << query.lastError().text();
+        return QList<User>();
+    }
+    while (query.next()) {
+        int id = query.value("friend_id").toInt();
+        QString name = query.value("friend_username").toString();
+        qDebug() << name;
+        User friendInfo(id, name);
+        friendsList.append(friendInfo);
+    }
+    return friendsList;
+}
+
