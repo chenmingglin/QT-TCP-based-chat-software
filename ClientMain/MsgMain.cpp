@@ -5,6 +5,7 @@
 #include <qjsonarray.h>
 #include <qjsondocument.h>
 #include <qjsonobject.h>
+#include <qlistwidget.h>
 MsgMain::MsgMain(QWidget *parent)
 	: QMainWindow(parent)
 	, ui(new Ui::MsgMainClass())
@@ -12,11 +13,11 @@ MsgMain::MsgMain(QWidget *parent)
 	ui->setupUi(this);
 	ui->widget->setStyleSheet("background-color: black;");
 	ui->icon->setStyleSheet("background-image: url(:/icon.jpg);");
-	connect(this, &MsgMain::friendsListOk, this, &MsgMain::showFriendsList);
-	/*QListWidgetItem* newItem = new QListWidgetItem("ÕÅÈý");
-	newItem->setSizeHint(QSize(246, 65));
-	ui->listWidget->addItem(newItem);*/
+	ui->listWidget->setIconSize(QSize(40, 40));
 
+	connect(this, &MsgMain::friendsListOk, this, &MsgMain::showFriendsList);
+	connect(ui->listWidget, &QListWidget::itemClicked, this, &MsgMain::onFriendListItemClicked);
+	connect(ui->sendBtn, &QPushButton::clicked, this, &MsgMain::onClickedSendBtn);
 }
 
 MsgMain::~MsgMain()
@@ -42,12 +43,41 @@ QList<User> MsgMain::jsonArrayToList(const QJsonArray& jsonArray)
 }
 
 
+void MsgMain::onFriendListItemClicked(QListWidgetItem* item)
+{
+	qDebug() << "Item clicked:" << item->text();
+	ui->groupBox->setTitle(item->text());
+	//emit sendFriendIdToMsgBox(item->data(32));
+	m_friendid = item->data(32).toInt();
+}
+
+
+void MsgMain::onClickedSendBtn()
+{
+	QString msg = ui->msg->toPlainText();
+	QJsonObject obj;
+	obj.insert("head", 2);
+	obj.insert("msg", msg);
+	obj.insert("from", m_userid);
+	obj.insert("to", m_friendid);
+	QJsonDocument doc(obj);
+	QByteArray jsonString = doc.toJson(QJsonDocument::Indented);
+	emit sendUserMsgtoFriend(jsonString);
+}
+
+void MsgMain::recvUserId(int usrId)
+{
+	m_userid = usrId;
+}
+
 void MsgMain::showFriendsList()
 {
 	for (int i = 0; i < m_friendsList.length(); i++)
 	{
 		QListWidgetItem* newItem = new QListWidgetItem(m_friendsList.at(i).name());
+		newItem->setData(32, m_friendsList.at(i).id());
 		newItem->setSizeHint(QSize(246, 65));
+		newItem->setIcon(QIcon(":/img/1.jpeg"));
 		ui->listWidget->addItem(newItem);
 	}
 }

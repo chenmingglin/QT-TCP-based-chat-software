@@ -25,6 +25,8 @@ ClientMain::ClientMain(QWidget *parent)
     connect(m_socket, &QTcpSocket::readyRead, this, &ClientMain::recvSocketData);
     connect(this, &ClientMain::sendFriendsList, m_msgWidget, &MsgMain::recvFriendsList);
     connect(this, &ClientMain::sendLogonOk, this, &ClientMain::recvLogonOk);
+    connect(this, &ClientMain::sendUserId, m_msgWidget, &MsgMain::recvUserId);
+    connect(m_msgWidget, &MsgMain::sendUserMsgtoFriend, this, &ClientMain::recvUserMsgtoFriend);
 }
 
 ClientMain::~ClientMain()
@@ -77,8 +79,8 @@ void ClientMain::onClickedLogin()
         obj.insert("ip", getIp());
 
         QJsonDocument doc(obj);
-        QString jsonString = QString::fromUtf8(doc.toJson(QJsonDocument::Indented));
-        m_socket->write(jsonString.toUtf8());
+        QByteArray jsonString = doc.toJson(QJsonDocument::Indented);
+        m_socket->write(jsonString);
 
         connect(this, &ClientMain::sendData, this, &ClientMain::recvData);
 
@@ -115,6 +117,7 @@ void ClientMain::recvData(int operation,QVariantMap params)
         if (params.value("flag").toBool())
         {
             emit sendLogonOk();
+            emit sendUserId(params.value("from_id").toInt());
             qDebug() << "logon ok:" << params.value("msg").toString();
             this->close();
             m_msgWidget->show();
@@ -174,6 +177,11 @@ void ClientMain::recvLogonOk()
     QJsonDocument doc(obj);
     QByteArray jsonString = doc.toJson(QJsonDocument::Indented);
     m_socket->write(jsonString);
+}
+
+void ClientMain::recvUserMsgtoFriend(QByteArray msg)
+{
+    m_socket->write(msg);
 }
 
 

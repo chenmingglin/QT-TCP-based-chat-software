@@ -12,7 +12,7 @@ Sql::Sql(QObject *parent)
     m_db.setHostName("localhost");      // 数据库服务器的地址
     m_db.setDatabaseName("users"); // 数据库名称
     m_db.setUserName("root");           // 数据库用户名
-    m_db.setPassword("");       // 数据库密码
+    m_db.setPassword("Chen021204.");       // 数据库密码
     if (!m_db.open()) {
         qDebug() << "Cannot open database" << m_db.lastError().text();
         return;

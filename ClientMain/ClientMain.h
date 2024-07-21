@@ -28,7 +28,7 @@ signals:
     void sendData(int operation, QVariantMap params);
     void loginClose();
     void sendFriendsList(QByteArray friendsData);
-    
+    void sendUserId(int userId);
 private:
     Ui::ClientMainClass *ui;
     QTcpSocket* m_socket;
@@ -40,4 +40,5 @@ public slots:
     void recvSocketData();
     void recvData(int operation, QVariantMap params);
     void recvLogonOk();
+    void recvUserMsgtoFriend(QByteArray msg);
 };
