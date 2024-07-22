@@ -31,4 +31,5 @@ public slots:
 	void onFriendListItemClicked(QListWidgetItem* item);
 	void onClickedSendBtn();
 	void recvUserId(int usrId);
+	void recvFriendMsg(QVariantMap params);
 };

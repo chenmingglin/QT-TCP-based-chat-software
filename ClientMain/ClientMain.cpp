@@ -4,11 +4,12 @@
 #include <qjsondocument.h>
 #include <qjsonobject.h>
 #include <qjsonarray.h>
-
 #include <qjsonvalue.h>
 #include <qmessagebox.h>
 #include <qvariantmap.h>
 #include <qlist.h>
+#include <qfile.h>
+#include <QDir>
 #include "user.h"
 
 ClientMain::ClientMain(QWidget *parent)
@@ -27,6 +28,7 @@ ClientMain::ClientMain(QWidget *parent)
     connect(this, &ClientMain::sendLogonOk, this, &ClientMain::recvLogonOk);
     connect(this, &ClientMain::sendUserId, m_msgWidget, &MsgMain::recvUserId);
     connect(m_msgWidget, &MsgMain::sendUserMsgtoFriend, this, &ClientMain::recvUserMsgtoFriend);
+    connect(this, &ClientMain::sendFriendMsg, m_msgWidget, &MsgMain::recvFriendMsg);
 }
 
 ClientMain::~ClientMain()
@@ -60,7 +62,7 @@ QString ClientMain::getIp() const
 void ClientMain::onClickedLogin()
 {
     Login* login = new Login(this);
-    login->setAttribute(Qt::WA_DeleteOnClose); // 登录对话框关闭时自动删除
+    // 登录对话框关闭时自动删除
     login->show();
     //接受注册ui确认信号,并注册
     connect(login, &Login::onClieckedOk, this, [=] {
@@ -121,7 +123,7 @@ void ClientMain::recvData(int operation,QVariantMap params)
             qDebug() << "logon ok:" << params.value("msg").toString();
             this->close();
             m_msgWidget->show();
-            
+            emit sendUserId(params.value("from_id").toInt());
         }
         else
         {
@@ -138,8 +140,33 @@ void ClientMain::recvData(int operation,QVariantMap params)
         }
         break;
     case 2:
+    {
+        // 构建文件路径
+        QDir dir(".");
+        dir.cd("UserData"); // 尝试进入UserData目录
+        
+        // 如果UserData目录不存在，则创建之
+        if (!dir.exists()) {
+            if (!dir.mkdir("UserData")) { // 创建目录
+                qWarning() << "error!!! Unable to create UserData directory.";
+                break;
+            }
+            dir.cd("UserData"); // 再次尝试进入UserData目录
+        }
+        // 指定文件名
+        QString fileName = dir.absoluteFilePath(QString("'%1'.txt").arg(params.value("from_id").toInt()));
+        QFile file(fileName);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
+            qWarning() << "Failed to open file for appending:" << file.errorString();
+            return;
+        }
+        // 使用QTextStream追加数据
+        QTextStream out(&file);
+        out << params.value("msg").toString();
+        file.close();
+        emit sendFriendMsg(params);
         break;
-
+    }
     case 3:
         //注册
         if (params.value("flag").toBool())
@@ -181,6 +208,7 @@ void ClientMain::recvLogonOk()
 
 void ClientMain::recvUserMsgtoFriend(QByteArray msg)
 {
+    qDebug() << msg;
     m_socket->write(msg);
 }
 

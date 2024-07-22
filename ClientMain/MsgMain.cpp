@@ -6,6 +6,7 @@
 #include <qjsondocument.h>
 #include <qjsonobject.h>
 #include <qlistwidget.h>
+#include <qfile.h>
 MsgMain::MsgMain(QWidget *parent)
 	: QMainWindow(parent)
 	, ui(new Ui::MsgMainClass())
@@ -18,6 +19,7 @@ MsgMain::MsgMain(QWidget *parent)
 	connect(this, &MsgMain::friendsListOk, this, &MsgMain::showFriendsList);
 	connect(ui->listWidget, &QListWidget::itemClicked, this, &MsgMain::onFriendListItemClicked);
 	connect(ui->sendBtn, &QPushButton::clicked, this, &MsgMain::onClickedSendBtn);
+
 }
 
 MsgMain::~MsgMain()
@@ -45,10 +47,23 @@ QList<User> MsgMain::jsonArrayToList(const QJsonArray& jsonArray)
 
 void MsgMain::onFriendListItemClicked(QListWidgetItem* item)
 {
-	qDebug() << "Item clicked:" << item->text();
+	qDebug() << "Item clicked:" << item->text() << item->data(32).toInt();
 	ui->groupBox->setTitle(item->text());
 	//emit sendFriendIdToMsgBox(item->data(32));
 	m_friendid = item->data(32).toInt();
+	
+	QFile file(QString("./UserData/'%1'.txt").arg(m_friendid));
+	QTextStream in(&file);
+	if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+	{
+		qWarning() << "Failed to open file for reading:" << file.errorString();
+		return;
+	}
+	while (!in.atEnd()) {
+		QString msg = in.readLine();
+		ui->record->append(msg);
+	}
+	file.close();
 }
 
 
@@ -57,9 +72,9 @@ void MsgMain::onClickedSendBtn()
 	QString msg = ui->msg->toPlainText();
 	QJsonObject obj;
 	obj.insert("head", 2);
-	obj.insert("msg", msg);
-	obj.insert("from", m_userid);
-	obj.insert("to", m_friendid);
+	obj.insert("msg", msg + "\n");
+	obj.insert("from_id", m_userid);
+	obj.insert("to_id", m_friendid);
 	QJsonDocument doc(obj);
 	QByteArray jsonString = doc.toJson(QJsonDocument::Indented);
 	emit sendUserMsgtoFriend(jsonString);
@@ -68,6 +83,14 @@ void MsgMain::onClickedSendBtn()
 void MsgMain::recvUserId(int usrId)
 {
 	m_userid = usrId;
+}
+
+void MsgMain::recvFriendMsg(QVariantMap params)
+{
+	if (params.value("to_id").toInt() == m_friendid)
+	{
+		ui->record->append(params.value("msg").toString());
+	}
 }
 
 void MsgMain::showFriendsList()

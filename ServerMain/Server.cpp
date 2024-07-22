@@ -167,9 +167,18 @@ void Server::handleDatabaseOperation(int operation, QVariantMap params, QTcpSock
 	case 2:
 	{ //消息
 	  auto it = m_clientsockets.find(to_id);
+	  qDebug() << it.key() << ":" << msg;
+	  QJsonObject obj;
+	  obj.insert("head", 2);
+	  obj.insert("msg", msg);
+	  obj.insert("from_id", from_id);
+	  obj.insert("to_id", to_id);
+	  QJsonDocument doc(obj);
+	  // 发送登录成功信息
+	  QByteArray jsonString = doc.toJson(QJsonDocument::Indented);
 	  if (it != m_clientsockets.end())
 	  {
-		  it.value()->write(name.toUtf8() +"："+ msg.toUtf8());
+		  it.value()->write(jsonString);
 		  break;
 	  }
 	  break;

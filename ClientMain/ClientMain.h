@@ -29,6 +29,7 @@ signals:
     void loginClose();
     void sendFriendsList(QByteArray friendsData);
     void sendUserId(int userId);
+    void sendFriendMsg(QVariantMap params);
 private:
     Ui::ClientMainClass *ui;
     QTcpSocket* m_socket;
