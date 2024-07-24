@@ -24,7 +24,6 @@ public:
     
 
 signals:
-    void sendLogonOk();
     void sendData(int operation, QVariantMap params);
     void loginClose();
     void sendFriendsList(QByteArray friendsData);
@@ -40,6 +39,7 @@ public slots:
     void onClickedLogin();
     void recvSocketData();
     void recvData(int operation, QVariantMap params);
-    void recvLogonOk();
+ 
+
     void recvUserMsgtoFriend(QByteArray msg);
 };

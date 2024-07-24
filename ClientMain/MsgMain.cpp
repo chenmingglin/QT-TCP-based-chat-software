@@ -7,6 +7,8 @@
 #include <qjsonobject.h>
 #include <qlistwidget.h>
 #include <qfile.h>
+#include <qdir.h>
+
 MsgMain::MsgMain(QWidget *parent)
 	: QMainWindow(parent)
 	, ui(new Ui::MsgMainClass())
@@ -47,9 +49,9 @@ QList<User> MsgMain::jsonArrayToList(const QJsonArray& jsonArray)
 
 void MsgMain::onFriendListItemClicked(QListWidgetItem* item)
 {
+	ui->record->clear();
 	qDebug() << "Item clicked:" << item->text() << item->data(32).toInt();
 	ui->groupBox->setTitle(item->text());
-	//emit sendFriendIdToMsgBox(item->data(32));
 	m_friendid = item->data(32).toInt();
 	
 	QFile file(QString("./UserData/'%1'.txt").arg(m_friendid));
@@ -73,11 +75,14 @@ void MsgMain::onClickedSendBtn()
 	QJsonObject obj;
 	obj.insert("head", 2);
 	obj.insert("msg", msg + "\n");
-	obj.insert("from_id", m_userid);
-	obj.insert("to_id", m_friendid);
+	obj.insert("userId", m_userid);
+	obj.insert("friendId", m_friendid);
 	QJsonDocument doc(obj);
 	QByteArray jsonString = doc.toJson(QJsonDocument::Indented);
 	emit sendUserMsgtoFriend(jsonString);
+	ui->record->setAlignment(Qt::AlignRight);
+	ui->record->append(QString::number(m_userid) + ":" + "\n" + msg);
+	ui->msg->clear();
 }
 
 void MsgMain::recvUserId(int usrId)
@@ -87,10 +92,33 @@ void MsgMain::recvUserId(int usrId)
 
 void MsgMain::recvFriendMsg(QVariantMap params)
 {
-	if (params.value("to_id").toInt() == m_friendid)
+	if (params.value("friendId").toInt() == m_userid)
 	{
-		ui->record->append(params.value("msg").toString());
+		ui->record->append(QString::number(m_userid) + ":\n\t" + params.value("msg").toString());
 	}
+	// 构建文件路径
+	QDir dir(".");
+	dir.cd("UserData"); // 尝试进入UserData目录
+
+	// 如果UserData目录不存在，则创建之
+	if (!dir.exists()) {
+		if (!dir.mkdir("UserData")) { // 创建目录
+			qWarning() << "error!!! Unable to create UserData directory.";
+
+		}
+		dir.cd("UserData"); // 再次尝试进入UserData目录
+	}
+	// 指定文件名
+	QString fileName = dir.absoluteFilePath(QString("'%1'.txt").arg(params.value("userId").toInt()));
+	QFile file(fileName);
+	if (!file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
+		qWarning() << "Failed to open file for appending:" << file.errorString();
+		return;
+	}
+	// 使用QTextStream追加数据
+	QTextStream out(&file);
+	out << QString::number(m_userid) + "\n \t" + params.value("msg").toString();
+	file.close();
 }
 
 void MsgMain::showFriendsList()

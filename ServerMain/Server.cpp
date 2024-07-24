@@ -84,11 +84,6 @@ void Server::readReady()
 		//注册
 		emit databaseOperationRequested(3, params,sock);
 		break;
-
-	case 4:
-		emit databaseOperationRequested(4, params, sock);
-		break;
-
 	default:
 		break;
 	}
@@ -113,8 +108,8 @@ void Server::incomingConnection(qintptr socketDescriptor)
 
 void Server::handleDatabaseOperation(int operation, QVariantMap params, QTcpSocket* sock)
 {
-	int from_id = params.value("from_id").toInt();
-	int to_id = params.value("to_id").toInt();
+	int from_id = params.value("userId").toInt();
+	int to_id = params.value("friendId").toInt();
 	QString msg = params.value("msg").toString();
 	QString name = params.value("name").toString();
 	QString psd = params.value("psd").toString();
@@ -133,15 +128,26 @@ void Server::handleDatabaseOperation(int operation, QVariantMap params, QTcpSock
 	{
 		if (m_sql->logon(from_id, psd))
 		{
+			m_clientsockets.insert(from_id, sock);
+
 			QJsonObject obj;
 			obj.insert("head", 1);
-			obj.insert("msg", "登入成功");
-			obj.insert("from_id", from_id);
+			obj.insert("userId", from_id);
 			obj.insert("flag", true);
+			QList<User> friendsList = m_sql->fetchFriendsList(params.value("userId").toInt());
+			qDebug() << "--------";
+			for (int i = 0; i < friendsList.length(); i++)
+			{
+				qDebug() << friendsList.at(i).id();
+			}
+
+			QJsonDocument doc2(userListToJsonArray(friendsList));
+			QByteArray data = doc2.toJson();
+			obj.insert("msg", QString::fromUtf8(data));
 			QJsonDocument doc(obj);
-			m_clientsockets.insert(from_id, sock);
+			
 			// 发送登录成功信息
-			QByteArray jsonString = doc.toJson(QJsonDocument::Indented);
+			QByteArray jsonString = doc.toJson();
 			sock->write(jsonString);
 			sock->flush();
 			break;
@@ -149,14 +155,14 @@ void Server::handleDatabaseOperation(int operation, QVariantMap params, QTcpSock
 		else
 		{
 			qDebug() << "logon error";
-
+		
 			QJsonObject obj;
 			obj.insert("head", 1);
 			obj.insert("flag", false);
-
+			obj.insert("msg", "Msg    error");
 			QJsonDocument doc(obj);
-			QByteArray jsonString = doc.toJson(QJsonDocument::Indented);
-
+			QByteArray jsonString = doc.toJson();
+		
 			// 发送登录失败信息
 			sock->write(jsonString);
 			sock->flush();
@@ -171,8 +177,8 @@ void Server::handleDatabaseOperation(int operation, QVariantMap params, QTcpSock
 	  QJsonObject obj;
 	  obj.insert("head", 2);
 	  obj.insert("msg", msg);
-	  obj.insert("from_id", from_id);
-	  obj.insert("to_id", to_id);
+	  obj.insert("userId", from_id);
+	  obj.insert("friendId", to_id);
 	  QJsonDocument doc(obj);
 	  // 发送登录成功信息
 	  QByteArray jsonString = doc.toJson(QJsonDocument::Indented);
@@ -181,7 +187,12 @@ void Server::handleDatabaseOperation(int operation, QVariantMap params, QTcpSock
 		  it.value()->write(jsonString);
 		  break;
 	  }
-	  break;
+	  else
+	  {
+		  qDebug() << "friend error!";
+		  break;
+	  }
+	  
 	}
 	//注册
 	case 3:
@@ -192,7 +203,7 @@ void Server::handleDatabaseOperation(int operation, QVariantMap params, QTcpSock
 			QJsonObject obj;
 			obj.insert("head", 3);
 			obj.insert("msg", "注册成功");
-			obj.insert("from_id", from_id);
+			obj.insert("userId", from_id);
 			obj.insert("flag", true);
 			QJsonDocument doc(obj);
 			QByteArray jsonString = doc.toJson(QJsonDocument::Indented);
@@ -216,24 +227,6 @@ void Server::handleDatabaseOperation(int operation, QVariantMap params, QTcpSock
 			sock->flush();
 			break;
 		}
-
-	//好友列表
-	case 4:
-	{
-		QList<User> friendsList = m_sql->fetchFriendsList(params.value("from_id").toInt());
-		QJsonDocument doc(userListToJsonArray(friendsList));
-		QByteArray data = doc.toJson();
-		
-		QJsonObject obj;
-		obj.insert("head", 4);
-		obj.insert("msg", QString::fromUtf8(data));
-		QJsonDocument doc_hearder(obj);
-		QByteArray clientData = doc_hearder.toJson();
-		sock->write(clientData);
-
-		qDebug() << QString::fromUtf8(data);
-		break;
-	}
 	default:
 		break;
 	}

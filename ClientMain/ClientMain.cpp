@@ -1,5 +1,6 @@
 #include "ClientMain.h"
-#include <QHostAddress>
+
+#include <qhostaddress.h>
 #include <QNetworkInterface>
 #include <qjsondocument.h>
 #include <qjsonobject.h>
@@ -19,16 +20,17 @@ ClientMain::ClientMain(QWidget *parent)
     ui->setupUi(this);
     m_socket = new QTcpSocket(this);
     m_msgWidget = new MsgMain(this);
-    setWindowTitle("客户端");
+    //setWindowTitle("客户端");
     m_socket->connectToHost(QHostAddress(getIp()), 8989);
     connect(ui->logon, &QPushButton::clicked, this, &ClientMain::onClickedLogon);
     connect(ui->login, &QPushButton::clicked, this, &ClientMain::onClickedLogin);
     connect(m_socket, &QTcpSocket::readyRead, this, &ClientMain::recvSocketData);
     connect(this, &ClientMain::sendFriendsList, m_msgWidget, &MsgMain::recvFriendsList);
-    connect(this, &ClientMain::sendLogonOk, this, &ClientMain::recvLogonOk);
     connect(this, &ClientMain::sendUserId, m_msgWidget, &MsgMain::recvUserId);
     connect(m_msgWidget, &MsgMain::sendUserMsgtoFriend, this, &ClientMain::recvUserMsgtoFriend);
     connect(this, &ClientMain::sendFriendMsg, m_msgWidget, &MsgMain::recvFriendMsg);
+
+    connect(this, &ClientMain::sendData, this, &ClientMain::recvData);
 }
 
 ClientMain::~ClientMain()
@@ -76,8 +78,7 @@ void ClientMain::onClickedLogin()
         obj.insert("name", name);
         obj.insert("psd", psd);
         obj.insert("msg", "注册");
-        obj.insert("from", 0);
-        obj.insert("to", 0);
+        obj.insert("userId", 0);
         obj.insert("ip", getIp());
 
         QJsonDocument doc(obj);
@@ -106,6 +107,7 @@ void ClientMain::recvSocketData()
     QVariantMap params = obj.toVariantMap();
     int head = params.value("head").toInt();
     emit sendData(head, params);
+    m_socket->flush();
 }
 
 void ClientMain::recvData(int operation,QVariantMap params)
@@ -115,55 +117,42 @@ void ClientMain::recvData(int operation,QVariantMap params)
     case 0:
         break;
     case 1:
+    {
         //登入
-        if (params.value("flag").toBool())
+        bool isLoggedIn = false;
+        if (params.value("flag").toBool() == true && isLoggedIn == false)
         {
-            emit sendLogonOk();
-            emit sendUserId(params.value("from_id").toInt());
-            qDebug() << "logon ok:" << params.value("msg").toString();
+            isLoggedIn = true;
+            emit sendUserId(params.value("userId").toInt());
+            QByteArray friendsData = params.value("msg").toByteArray();
+            emit sendFriendsList(friendsData);
+            qDebug() << "logon ok:";
             this->close();
             m_msgWidget->show();
-            emit sendUserId(params.value("from_id").toInt());
+            break;
         }
         else
         {
-            qDebug() << "logon error" << params.value("msg").toString();;
+            isLoggedIn = false;
+            qDebug() << params.value("msg").toByteArray();
+            qDebug() << "logon error";
             int result = QMessageBox::question(nullptr, "Title", "登录错误", QMessageBox::Yes | QMessageBox::No);
             if (result == QMessageBox::Yes)
             {
+
                 // 用户选择了“是”
+                break;
             }
             else
             {
                 // 用户选择了“否”
-            }
-        }
-        break;
-    case 2:
-    {
-        // 构建文件路径
-        QDir dir(".");
-        dir.cd("UserData"); // 尝试进入UserData目录
-        
-        // 如果UserData目录不存在，则创建之
-        if (!dir.exists()) {
-            if (!dir.mkdir("UserData")) { // 创建目录
-                qWarning() << "error!!! Unable to create UserData directory.";
                 break;
             }
-            dir.cd("UserData"); // 再次尝试进入UserData目录
         }
-        // 指定文件名
-        QString fileName = dir.absoluteFilePath(QString("'%1'.txt").arg(params.value("from_id").toInt()));
-        QFile file(fileName);
-        if (!file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
-            qWarning() << "Failed to open file for appending:" << file.errorString();
-            return;
-        }
-        // 使用QTextStream追加数据
-        QTextStream out(&file);
-        out << params.value("msg").toString();
-        file.close();
+    }
+    case 2:
+    {
+        
         emit sendFriendMsg(params);
         break;
     }
@@ -171,7 +160,7 @@ void ClientMain::recvData(int operation,QVariantMap params)
         //注册
         if (params.value("flag").toBool())
         {
-            int id = params.value("from_id").toInt();
+            int id = params.value("userId").toInt();
             QMessageBox::information(nullptr, "注册成功", ("您的账号已成功注册！ID:" + QString::number(id)));
             emit loginClose();
         }
@@ -181,30 +170,11 @@ void ClientMain::recvData(int operation,QVariantMap params)
             emit loginClose();
         }
         break;
-
-    case 4:
-    {
-        //好友列表
-        QByteArray friendsData = params.value("msg").toByteArray();
-        emit sendFriendsList(friendsData);
-        break;
-    }
     default:
         break;
     }
 }
 
-void ClientMain::recvLogonOk()
-{
-    int id = ui->id->text().toInt();
-    QJsonObject obj;
-    obj.insert("head", 4);
-    obj.insert("from_id", id);
-
-    QJsonDocument doc(obj);
-    QByteArray jsonString = doc.toJson(QJsonDocument::Indented);
-    m_socket->write(jsonString);
-}
 
 void ClientMain::recvUserMsgtoFriend(QByteArray msg)
 {
@@ -226,12 +196,12 @@ void ClientMain::onClickedLogon()
     obj.insert("name", " ");
     obj.insert("psd", psd);
     obj.insert("msg", "登入");
-    obj.insert("from_id", id);
-    obj.insert("to_id", 0);
+    obj.insert("userId", id);
+
     obj.insert("ip", getIp());
     
     QJsonDocument doc(obj);
     QString jsonString = QString::fromUtf8(doc.toJson(QJsonDocument::Indented));
     m_socket->write(jsonString.toUtf8());
-    connect(this, &ClientMain::sendData, this, &ClientMain::recvData);
+    
 }
