@@ -3,10 +3,10 @@
 #include "MsgMain.h"
 int main(int argc, char *argv[])
 {
+    
     QApplication a(argc, argv);
     ClientMain w;
-    /*MsgMain m;
-    m.show();*/
+    MsgMain m;
     w.show();
     return a.exec();
 }

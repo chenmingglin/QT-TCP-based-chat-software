@@ -84,6 +84,11 @@ void Server::readReady()
 		//×¢²á
 		emit databaseOperationRequested(3, params,sock);
 		break;
+
+	case 4:
+		//Ìí¼ÓºÃÓÑ
+		emit databaseOperationRequested(4, params, sock);
+		break;
 	default:
 		break;
 	}
@@ -227,6 +232,24 @@ void Server::handleDatabaseOperation(int operation, QVariantMap params, QTcpSock
 			sock->flush();
 			break;
 		}
+
+	case 4:
+	{
+		qDebug() << "add friend";
+		User onefriend = m_sql->addFriend(params.value("userId").toInt(), params.value("friendId").toInt());
+		qDebug() << "name :" << onefriend.name();
+		qDebug() << "id :" << onefriend.id();
+		QJsonObject obj;
+		obj.insert("head", 4);
+		obj.insert("friendId", onefriend.id());
+		obj.insert("friendName", onefriend.name());
+		QJsonDocument doc(obj);
+		QByteArray jsonString = doc.toJson(QJsonDocument::Indented);
+		sock->write(jsonString);
+		break;
+	}
+		
+		
 	default:
 		break;
 	}

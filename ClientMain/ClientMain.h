@@ -29,17 +29,19 @@ signals:
     void sendFriendsList(QByteArray friendsData);
     void sendUserId(int userId);
     void sendFriendMsg(QVariantMap params);
+    void sendoneFriend(QVariantMap friendInfo);
 private:
     Ui::ClientMainClass *ui;
     QTcpSocket* m_socket;
     MsgMain* m_msgWidget;
-    
+    bool m_isLogon;
+
 public slots:
     void onClickedLogon();
     void onClickedLogin();
     void recvSocketData();
     void recvData(int operation, QVariantMap params);
- 
+    void recvAddFriend(QByteArray addFriend);
 
     void recvUserMsgtoFriend(QByteArray msg);
 };

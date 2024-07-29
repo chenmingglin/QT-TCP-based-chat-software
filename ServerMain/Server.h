@@ -22,6 +22,8 @@ public slots:
 	void disconnected();
 	//将好友list转换为json
 	QJsonArray userListToJsonArray(const QList<User>& users);
+	
+
 
 private:
 	QMap<int, QTcpSocket*> m_clientsockets;

@@ -8,6 +8,9 @@
 #include <qlistwidget.h>
 #include <qfile.h>
 #include <qdir.h>
+#include <memory>
+#include <qmessagebox.h>
+#include <qmenu.h>
 
 MsgMain::MsgMain(QWidget *parent)
 	: QMainWindow(parent)
@@ -21,7 +24,8 @@ MsgMain::MsgMain(QWidget *parent)
 	connect(this, &MsgMain::friendsListOk, this, &MsgMain::showFriendsList);
 	connect(ui->listWidget, &QListWidget::itemClicked, this, &MsgMain::onFriendListItemClicked);
 	connect(ui->sendBtn, &QPushButton::clicked, this, &MsgMain::onClickedSendBtn);
-
+	connect(ui->searchBtn, &QPushButton::clicked, this, &MsgMain::searchFriend);
+	connect(this, &QListWidget::customContextMenuRequested,this, &MsgMain::showContextMenu);//好友列表右键菜单
 }
 
 MsgMain::~MsgMain()
@@ -44,6 +48,18 @@ QList<User> MsgMain::jsonArrayToList(const QJsonArray& jsonArray)
 		}
 	}
 	return userList;
+}
+
+void MsgMain::searchFriend()
+{
+	int friendId = ui->search->text().toInt();
+	QJsonObject obj;
+	obj.insert("head", 4);
+	obj.insert("userId", m_userid);
+	obj.insert("friendId", friendId);
+	QJsonDocument doc(obj);
+	QByteArray jsonString = doc.toJson(QJsonDocument::Indented);
+	emit sendAddFriend(jsonString);
 }
 
 
@@ -121,11 +137,52 @@ void MsgMain::recvFriendMsg(QVariantMap params)
 	file.close();
 }
 
+void MsgMain::recvoneFriend(QVariantMap friendInfo)
+{
+	if ("friendId", friendInfo.value("friendId").toInt() > 0 && "friendName", !friendInfo.value("friendName").toString().isEmpty())
+	{
+		QListWidgetItem* newItem = new QListWidgetItem(friendInfo.value("friendName").toString() + ": " + QString::number(friendInfo.value("friendId").toInt()));
+		newItem->setData(32, friendInfo.value("friendId").toInt());
+		newItem->setSizeHint(QSize(246, 65));
+		newItem->setIcon(QIcon(":/img/1.jpeg"));
+		ui->listWidget->addItem(newItem);
+		QMessageBox::information(nullptr, "添加成功", "添加成功！");
+	}
+	else
+	{
+		QMessageBox::critical(nullptr, "添加失败", "添加失败，请检查您的输入或稍后再试。");
+	}
+	
+}
+
+void MsgMain::showContextMenu(const QPoint& pos)
+{
+	// 获取鼠标点击位置的全局坐标
+	QPoint globalPos = mapToGlobal(pos);
+
+	// 创建一个菜单
+	QMenu menu(this);
+
+	// 添加一个“删除”动作
+	QAction* deleteAction = menu.addAction("Delete");
+
+	// 连接“删除”动作到槽函数
+	connect(deleteAction, &QAction::triggered, this, &MsgMain::removeSelectedItems);
+
+	// 显示菜单
+	menu.exec(globalPos);
+}
+
+void removeSelectedItems() {
+	// 移除所有选中的项
+}
+}
+
 void MsgMain::showFriendsList()
 {
 	for (int i = 0; i < m_friendsList.length(); i++)
 	{
-		QListWidgetItem* newItem = new QListWidgetItem(m_friendsList.at(i).name());
+		QListWidgetItem* newItem = new QListWidgetItem(m_friendsList.at(i).name() + ": " + QString::number(m_friendsList.at(i).id()));
 		newItem->setData(32, m_friendsList.at(i).id());
 		newItem->setSizeHint(QSize(246, 65));
 		newItem->setIcon(QIcon(":/img/1.jpeg"));

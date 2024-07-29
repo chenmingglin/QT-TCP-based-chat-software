@@ -14,7 +14,7 @@
 #include "user.h"
 
 ClientMain::ClientMain(QWidget *parent)
-    : QMainWindow(parent)
+    : QMainWindow(parent), m_isLogon(false)
     , ui(new Ui::ClientMainClass())
 {
     ui->setupUi(this);
@@ -31,6 +31,8 @@ ClientMain::ClientMain(QWidget *parent)
     connect(this, &ClientMain::sendFriendMsg, m_msgWidget, &MsgMain::recvFriendMsg);
 
     connect(this, &ClientMain::sendData, this, &ClientMain::recvData);
+    connect(m_msgWidget, &MsgMain::sendAddFriend, this, &ClientMain::recvAddFriend);
+    connect(this, &ClientMain::sendoneFriend, m_msgWidget, &MsgMain::recvoneFriend);
 }
 
 ClientMain::~ClientMain()
@@ -119,21 +121,21 @@ void ClientMain::recvData(int operation,QVariantMap params)
     case 1:
     {
         //µ«»Î
-        bool isLoggedIn = false;
-        if (params.value("flag").toBool() == true && isLoggedIn == false)
+        m_isLogon = false;
+        if (params.value("flag").toBool() == true && m_isLogon == false)
         {
-            isLoggedIn = true;
+            m_isLogon = true;
             emit sendUserId(params.value("userId").toInt());
             QByteArray friendsData = params.value("msg").toByteArray();
             emit sendFriendsList(friendsData);
             qDebug() << "logon ok:";
-            this->close();
+            this->hide();
             m_msgWidget->show();
             break;
         }
         else
         {
-            isLoggedIn = false;
+            m_isLogon = false;
             qDebug() << params.value("msg").toByteArray();
             qDebug() << "logon error";
             int result = QMessageBox::question(nullptr, "Title", "µ«¬º¥ÌŒÛ", QMessageBox::Yes | QMessageBox::No);
@@ -170,9 +172,24 @@ void ClientMain::recvData(int operation,QVariantMap params)
             emit loginClose();
         }
         break;
+
+    case 4:
+    {
+        QVariantMap friendInfo;
+        friendInfo.insert("friendId", params.value("friendId").toInt());
+        friendInfo.insert("friendName", params.value("friendName").toString());
+        emit sendoneFriend(friendInfo);
+        break;
+
+    }
     default:
         break;
     }
+}
+
+void ClientMain::recvAddFriend(QByteArray addFriend)
+{
+    m_socket->write(addFriend);
 }
 
 

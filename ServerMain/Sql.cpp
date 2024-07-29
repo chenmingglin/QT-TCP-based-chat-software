@@ -12,7 +12,7 @@ Sql::Sql(QObject *parent)
     m_db.setHostName("localhost");      // 数据库服务器的地址
     m_db.setDatabaseName("users"); // 数据库名称
     m_db.setUserName("root");           // 数据库用户名
-    m_db.setPassword("");       // 数据库密码
+    m_db.setPassword("Chen021204.");       // 数据库密码
     if (!m_db.open()) {
         qDebug() << "Cannot open database" << m_db.lastError().text();
         return;
@@ -120,4 +120,60 @@ QList<User> Sql::fetchFriendsList(int user_id)
     }
     return friendsList;
 }
+
+User Sql::addFriend(int user_id, int friend_id)
+{
+    User friendInfo(friend_id, "");
+    QSqlQuery query;
+    QString sql1 = QString("INSERT INTO friends(user_id, friend_id, status) VALUES('%1', '%2', 'accepted');").arg(user_id).arg(friend_id);
+    QString sql2 = QString("INSERT INTO friends(user_id, friend_id, status) VALUES('%1', '%2', 'accepted');").arg(friend_id).arg(user_id);
+    bool flag2 = m_db.transaction();
+    if (flag2)
+    {
+        if (query.exec(sql2))
+        {
+            m_db.commit();
+
+        }
+        else
+        {
+            m_db.rollback();
+            qDebug() << "Commt error executing addFriend2  query:" << query.lastError().text();
+        }
+    }
+    bool flag1 = m_db.transaction();
+    if (flag1)
+    {
+
+        if (query.exec(sql1))
+        {
+            m_db.commit();
+            QString sql2 = QString("SELECT user_name FROM USER WHERE user_id = '%1';").arg(friend_id);
+            if (query.exec(sql2))
+            {
+                if (query.next())
+                {
+                    QString name = query.value("user_name").toString();
+                    friendInfo.setName(name);
+                    return friendInfo;
+                }
+                else
+                {
+                    qDebug() << "Error executing addFriend query.next():" << query.lastError().text();
+                    return friendInfo;
+                }
+            }
+        }
+        else
+        {
+            m_db.rollback();
+            qDebug() << "Commt error executing addFriend  query:" << query.lastError().text();
+            return friendInfo;
+        }
+    }
+   
+    
+}
+
+
 

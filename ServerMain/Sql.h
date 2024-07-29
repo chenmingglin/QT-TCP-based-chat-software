@@ -14,6 +14,7 @@ public:
 	bool logon(int user_id, const QString& use_psd);//µ«»Î
 	bool login(int* user_id, const QString& user_name, const QString& user_psd, const QString& user_ip);
 	QList<User> fetchFriendsList(int user_id);
+	User addFriend(int user_id, int friend_id);
 private:
 	QSqlDatabase m_db;
 };
