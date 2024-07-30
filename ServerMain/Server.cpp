@@ -15,7 +15,7 @@ Server::Server(QObject* parent)
 		qDebug() << msg;
 	}
 	connect(this, &Server::databaseOperationRequested, this, &Server::handleDatabaseOperation);
-	
+	qDebug() << "pid:" << QThread::currentThreadId();
 }
 
 Server::~Server()
@@ -106,7 +106,7 @@ void Server::incomingConnection(qintptr socketDescriptor)
 	connect(clientSocket, &QTcpSocket::disconnected, this, &Server::disconnected);
 	connect(thread, &QThread::finished, thread, &QThread::deleteLater);
 	connect(clientSocket, &QTcpSocket::disconnected, thread, &QThread::quit);
-	
+
 	thread->start();
 	qDebug() << thread->currentThreadId();
 }
@@ -131,7 +131,7 @@ void Server::handleDatabaseOperation(int operation, QVariantMap params, QTcpSock
 		//µÇÈë
 	case 1:
 	{
-		if (m_sql->logon(from_id, psd))
+		if (m_sql->logon(from_id, psd, ip))
 		{
 			m_clientsockets.insert(from_id, sock);
 
@@ -203,7 +203,7 @@ void Server::handleDatabaseOperation(int operation, QVariantMap params, QTcpSock
 	case 3:
 		qDebug() << "name :" <<name;
 		qDebug() << "psd :" << psd;
-		if (m_sql->login(&from_id, name, psd, ip))
+		if (m_sql->login(&from_id, name, psd))
 		{
 			QJsonObject obj;
 			obj.insert("head", 3);

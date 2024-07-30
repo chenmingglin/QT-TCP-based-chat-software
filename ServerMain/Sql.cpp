@@ -33,17 +33,38 @@ Sql::Sql(QObject *parent)
 Sql::~Sql()
 {}
 
-bool Sql::logon(int user_id, const QString& user_psd)
+bool Sql::logon(int user_id, const QString& user_psd, const QString& user_ip)
 {
     QSqlQuery query;
-    QString sql = QString("SELECT user_psd FROM USER WHERE user_id = '%1';").arg(user_id);
+    QString sql = QString("SELECT user_psd, user_ip FROM USER WHERE user_id = '%1';").arg(user_id);
     if (query.exec(sql)) 
     {
         if (query.next()) 
         {
             QString psd = query.value("user_psd").toString();
             qDebug()<< "psd:" << psd;
-            return user_psd == query.value("user_psd").toString();
+            QString ip = query.value("user_ip").toString();
+            qDebug() << "ip:" << ip;
+            if (user_ip != query.value("user_ip").toString())
+            {
+                QString sql2 = QString("UPDATE USER SET user_ip = '%1' WHERE user_id = '%2'").arg(user_ip).arg(user_id);
+                bool flag = m_db.transaction();
+                if (flag)
+                {
+                    if (query.exec(sql2))
+                    {
+                        m_db.commit();
+                        
+                    }
+                    else
+                    {
+                        m_db.rollback();
+                        qDebug() << "Commt error executing logon ip query2:" << query.lastError().text();
+                    }
+                }
+
+            }
+            return user_psd == psd;
         }
         else
         {
@@ -59,11 +80,11 @@ bool Sql::logon(int user_id, const QString& user_psd)
    
 }
 
-bool Sql::login(int* user_id, const QString& user_name, const QString& user_psd, const QString& user_ip)
+bool Sql::login(int* user_id, const QString& user_name, const QString& user_psd)
 {
     QSqlQuery query;
     QString sql = QString("insert  into user(user_psd, user_name, user_ip) values('%1', '%2', '%3')")
-                         .arg(user_psd).arg(user_name).arg(user_ip);
+        .arg(user_psd).arg(user_name).arg(" ");
     bool flag = m_db.transaction();
     if (flag)
     {
