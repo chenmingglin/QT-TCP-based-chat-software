@@ -25,7 +25,7 @@ Sql::Sql(QObject *parent)
     }
     while (query.next()) {
         int id = query.value(0).toInt();
-        QString name = query.value(1).toString();
+        QString name = query.value("user_name").toString();
         qDebug() << "ID:" << id << "Name:" << name;
     }
 }
@@ -33,10 +33,10 @@ Sql::Sql(QObject *parent)
 Sql::~Sql()
 {}
 
-bool Sql::logon(int user_id, const QString& user_psd, const QString& user_ip)
+bool Sql::logon(User* user)
 {
     QSqlQuery query;
-    QString sql = QString("SELECT user_psd, user_ip FROM USER WHERE user_id = '%1';").arg(user_id);
+    QString sql = QString("SELECT user_psd, user_ip FROM USER WHERE user_id = '%1';").arg(user->id());
     if (query.exec(sql)) 
     {
         if (query.next()) 
@@ -45,9 +45,12 @@ bool Sql::logon(int user_id, const QString& user_psd, const QString& user_ip)
             qDebug()<< "psd:" << psd;
             QString ip = query.value("user_ip").toString();
             qDebug() << "ip:" << ip;
-            if (user_ip != query.value("user_ip").toString())
+            QString name = query.value("user_name").toString();
+            user->set_name(name);
+
+            if (user->ip() != query.value("user_ip").toString())
             {
-                QString sql2 = QString("UPDATE USER SET user_ip = '%1' WHERE user_id = '%2'").arg(user_ip).arg(user_id);
+                QString sql2 = QString("UPDATE USER SET user_ip = '%1' WHERE user_id = '%2'").arg(user->ip()).arg(user->id());
                 bool flag = m_db.transaction();
                 if (flag)
                 {
@@ -64,7 +67,7 @@ bool Sql::logon(int user_id, const QString& user_psd, const QString& user_ip)
                 }
 
             }
-            return user_psd == psd;
+            return user->psd() == psd;
         }
         else
         {
@@ -175,7 +178,7 @@ User Sql::addFriend(int user_id, int friend_id)
                 if (query.next())
                 {
                     QString name = query.value("user_name").toString();
-                    friendInfo.setName(name);
+                    friendInfo.set_name(name);
                     return friendInfo;
                 }
                 else
@@ -194,6 +197,33 @@ User Sql::addFriend(int user_id, int friend_id)
     }
    
     
+}
+
+bool Sql::delFriend(int user_id, int friend_id)
+{
+    QSqlQuery query;
+    QString sql = QString("UPDATE friends SET STATUS = 'pending' WHERE user_id = '%1' AND friend_id = '%2'").arg(user_id).arg(friend_id);
+
+    bool flag = m_db.transaction();
+    if (flag)
+    {
+        if (query.exec(sql))
+        {
+            m_db.commit();
+            qDebug() << "del success!";
+            return true;
+        }
+        else
+        {
+            m_db.rollback();
+            qDebug() << "del error!";
+            return false;
+        }
+    }
+    else
+    {
+        return false;
+    }
 }
 
 

@@ -89,6 +89,9 @@ void Server::readReady()
 		//添加好友
 		emit databaseOperationRequested(4, params, sock);
 		break;
+	case 5://删除好友
+		emit databaseOperationRequested(5, params, sock);
+		break;
 	default:
 		break;
 	}
@@ -119,7 +122,9 @@ void Server::handleDatabaseOperation(int operation, QVariantMap params, QTcpSock
 	QString name = params.value("name").toString();
 	QString psd = params.value("psd").toString();
 	QString ip = params.value("ip").toString();
-	
+	User user(from_id, name);
+	user.set_psd(psd);
+	user.set_ip(ip);
 	
 	switch (operation)
 	{
@@ -131,7 +136,7 @@ void Server::handleDatabaseOperation(int operation, QVariantMap params, QTcpSock
 		//登入
 	case 1:
 	{
-		if (m_sql->logon(from_id, psd, ip))
+		if (m_sql->logon(&user))
 		{
 			m_clientsockets.insert(from_id, sock);
 
@@ -139,6 +144,7 @@ void Server::handleDatabaseOperation(int operation, QVariantMap params, QTcpSock
 			obj.insert("head", 1);
 			obj.insert("userId", from_id);
 			obj.insert("flag", true);
+			obj.insert("name", user.name());
 			QList<User> friendsList = m_sql->fetchFriendsList(params.value("userId").toInt());
 			qDebug() << "--------";
 			for (int i = 0; i < friendsList.length(); i++)
@@ -185,7 +191,7 @@ void Server::handleDatabaseOperation(int operation, QVariantMap params, QTcpSock
 	  obj.insert("userId", from_id);
 	  obj.insert("friendId", to_id);
 	  QJsonDocument doc(obj);
-	  // 发送登录成功信息
+	  // 发送成功信息
 	  QByteArray jsonString = doc.toJson(QJsonDocument::Indented);
 	  if (it != m_clientsockets.end())
 	  {
@@ -249,7 +255,11 @@ void Server::handleDatabaseOperation(int operation, QVariantMap params, QTcpSock
 		break;
 	}
 		
-		
+	case 5:
+	{
+		m_sql->delFriend(params.value("userId").toInt(), params.value("friendId").toInt());
+		break;
+	}
 	default:
 		break;
 	}

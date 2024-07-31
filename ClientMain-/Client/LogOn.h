@@ -3,6 +3,7 @@
 #include <QMainWindow>
 #include "ui_LogOn.h"
 #include "Login.h"
+#include "User.h"
 QT_BEGIN_NAMESPACE
 namespace Ui { class LogOnClass; };
 QT_END_NAMESPACE
@@ -22,7 +23,7 @@ private:
 signals:
 	void send_logon_msg(QString logonMsg);
 	void send_ok(QByteArray frendList);
-	
+	void send_user(User user);
 public slots:
 	void on_logon_clicked();
 	void on_login_clicked();

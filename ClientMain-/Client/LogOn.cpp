@@ -62,11 +62,11 @@ void LogOn::recv_server(int head, QVariantMap params)
         if (params.value("flag").toBool() == true && isLogon_ == false)
         {
             isLogon_ = true;
-            //emit sendUserId(params.value("userId").toInt());
             QByteArray friendsData = params.value("msg").toByteArray();
             qDebug() << "logon ok:";
-            this->hide();
+            this->close();
             emit send_ok(friendsData);
+            emit send_user(User(params.value("userId").toInt(), params.value("name").toString()));
             break;
         }
         else

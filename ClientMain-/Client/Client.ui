@@ -23,7 +23,7 @@
       <height>592</height>
      </rect>
     </property>
-    <widget class="QWidget" name="widget_2" native="true">
+    <widget class="QWidget" name="widgetlan" native="true">
      <property name="geometry">
       <rect>
        <x>0</x>
@@ -56,13 +56,13 @@
         <x>7</x>
         <y>35</y>
         <width>40</width>
-        <height>40</height>
+        <height>37</height>
        </rect>
       </property>
       <property name="maximumSize">
        <size>
         <width>40</width>
-        <height>40</height>
+        <height>37</height>
        </size>
       </property>
       <widget class="QWidget" name="icon_2" native="true">
@@ -213,7 +213,7 @@
      <property name="title">
       <string/>
      </property>
-     <widget class="QTextEdit" name="record_2">
+     <widget class="QTextEdit" name="record">
       <property name="geometry">
        <rect>
         <x>0</x>
@@ -229,7 +229,7 @@
        </size>
       </property>
      </widget>
-     <widget class="QTextEdit" name="msg_2">
+     <widget class="QTextEdit" name="msg">
       <property name="geometry">
        <rect>
         <x>0</x>
@@ -245,7 +245,7 @@
        </size>
       </property>
      </widget>
-     <widget class="QPushButton" name="sendBtn_2">
+     <widget class="QPushButton" name="sendBtn">
       <property name="geometry">
        <rect>
         <x>450</x>
@@ -263,8 +263,6 @@
   </widget>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
- <resources>
-  <include location="Client.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>

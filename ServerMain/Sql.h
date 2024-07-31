@@ -11,10 +11,11 @@ class Sql  : public QObject
 public:
 	Sql(QObject *parent);
 	~Sql();
-	bool logon(int user_id, const QString& user_psd, const QString& user_ip);//登入
+	bool logon(User* user);//登入
 	bool login(int* user_id, const QString& user_name, const QString& user_psd);
 	QList<User> fetchFriendsList(int user_id);
-	User addFriend(int user_id, int friend_id);
+	User addFriend(int user_id, int friend_id);//添加好友
+	bool delFriend(int user_id, int friend_id);//删除好友
 private:
 	QSqlDatabase m_db;
 };
